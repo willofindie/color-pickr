@@ -1,9 +1,68 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import { hsv2hex, hsv2rgb } from '../utils';
+
 export default class Gradient extends React.PureComponent {
   static propTypes = {
     orientation: PropTypes.oneOf(['h', 'v']),
+    onChange: PropTypes.func.isRequired,
+  };
+
+  static defaultProps = {
+    hue: 0,
+  };
+
+  state = {
+    isMouseDown: false,
+    x: null,
+    y: null,
+  };
+
+  hueOffset = 15;
+
+  handleMouseDown = () => {
+    // TODO: Add document.body listener to support ux for clients
+    this.setState({ isMouseDown: true });
+  };
+  handleMouseUp = () => this.setState({ isMouseDown: false });
+  handleMouseMove = evt => {
+    if (this.state.isMouseDown) {
+      this.handleDrag(evt.clientX, evt.clientY);
+    }
+  };
+
+  handleDrag = (x, y) => {
+    if (this.dragContainer) {
+      const bounds = this.dragContainer.getBoundingClientRect();
+      const _x = x - bounds.left;
+      const _y = y - bounds.top;
+      let hue = 0;
+      if (this.props.orientation === 'v') {
+        hue = (y / bounds.height) * 360 + this.hueOffset;
+        this.setState({ y: _y, x: null });
+      } else {
+        hue = (x / bounds.width) * 360 + this.hueOffset;
+        this.setState({ x: _x, y: null });
+      }
+      this.props.onChange(hue);
+      return true;
+    }
+
+    return false;
+  };
+
+  getPosition = () => {
+    if (this.dragEle) {
+      return {
+        top: this.state.y != null ? this.state.y - this.dragEle.offsetHeight / 2 : 0,
+        left: this.state.x != null ? this.state.x - this.dragEle.offsetWidth / 2 : 0,
+      };
+    }
+    return {
+      top: this.state.y != null ? this.state.y : 0,
+      left: this.state.x != null ? this.state.x : 0,
+    };
   };
 
   renderGradientOrientation = orientation => {
@@ -53,8 +112,27 @@ export default class Gradient extends React.PureComponent {
     const { orientation } = this.props;
     return (
       <div className='hue-slider-container'>
-        <div className='hue-container'>{this.renderSVGGradient()}</div>
-        <div className='hue-selector' />
+        <div
+          ref={ele => {
+            this.dragContainer = ele;
+          }}
+          onMouseDown={this.handleMouseDown}
+          onMouseUp={this.handleMouseUp}
+          onMouseMove={this.handleMouseMove}
+          className='hue-container'
+        >
+          {this.renderSVGGradient()}
+        </div>
+        <div
+          ref={ele => {
+            this.dragEle = ele;
+          }}
+          className='hue-selector'
+          style={{
+            ...this.getPosition(),
+            pointerEvents: 'none',
+          }}
+        />
       </div>
     );
   }

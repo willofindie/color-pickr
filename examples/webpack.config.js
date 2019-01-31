@@ -10,6 +10,7 @@ module.exports = mode => {
     output: { filename: 'bundle.js', path: path.resolve('./dist') },
     module: {
       rules: [
+        { test: /\.css$/, use: ['style-loader', 'css-loader'] },
         {
           test: /\.jsx?$/,
           sideEffects: false,
@@ -31,6 +32,7 @@ module.exports = mode => {
               plugins: [
                 ['@babel/plugin-proposal-class-properties', { loose: true }],
                 ['@babel/plugin-proposal-object-rest-spread', { loose: true }],
+                'styled-jsx/babel'
               ],
             },
           },
