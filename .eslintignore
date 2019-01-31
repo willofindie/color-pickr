@@ -1,0 +1,7 @@
+**/node_modules/**
+**/dist/**
+.babelrc
+.eslintrc
+.prettierrc
+package.json
+package-lock.json
