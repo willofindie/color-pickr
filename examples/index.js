@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Row, Col, Popover, Input } from 'antd'
-import "antd/dist/antd.css";
+import { Row, Col, Popover, Input } from 'antd';
+import 'antd/dist/antd.css';
 
 import Pickr from './pickr.styled';
 import StyledPickr from './pickr.styled-jsx';
@@ -10,7 +10,7 @@ import ColorInputAddon from './color-input-addon';
 export default class App extends React.Component {
   render() {
     return (
-      <Row type='flex' justify="space-around" align="middle"gutter={16}>
+      <Row type='flex' justify='space-around' align='middle' gutter={16}>
         <Col span={8}>
           <Pickr withSwatch />
         </Col>
@@ -23,7 +23,8 @@ export default class App extends React.Component {
             addonAfter={
               <Popover content={<StyledPickr withSwatch />}>
                 <ColorInputAddon color='#1A237E' />
-              </Popover>}
+              </Popover>
+            }
             defaultValue={'#1A237E'}
           />
         </Col>

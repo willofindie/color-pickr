@@ -1,11 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-
-import { hsv2hex, hsv2rgb } from '../utils';
+import toggleDocumentListeners from '../toggle-document-listeners';
+import getRelativePos from '../get-relative-pos';
 
 export default class Gradient extends React.PureComponent {
   static propTypes = {
-    orientation: PropTypes.oneOf(['h', 'v']),
     onChange: PropTypes.func.isRequired,
   };
 
@@ -14,6 +13,7 @@ export default class Gradient extends React.PureComponent {
   };
 
   state = {
+    isComponentRendered: false,
     isMouseDown: false,
     x: null,
     y: null,
@@ -21,29 +21,38 @@ export default class Gradient extends React.PureComponent {
 
   hueOffset = 15;
 
-  handleMouseDown = () => {
-    // TODO: Add document.body listener to support ux for clients
-    this.setState({ isMouseDown: true });
+  isVertical = (w, h) => {
+    if (w > h) {
+      return false;
+    }
+    return true;
   };
-  handleMouseUp = () => this.setState({ isMouseDown: false });
+
+  handleMouseDown = () => {
+    this.setState({ isMouseDown: true });
+    toggleDocumentListeners(true, this.handleMouseUp, this.handleMouseMove);
+  };
+  handleMouseUp = () => {
+    this.setState({ isMouseDown: false });
+    toggleDocumentListeners(true, this.handleMouseUp, this.handleMouseMove);
+  };
   handleMouseMove = evt => {
     if (this.state.isMouseDown) {
-      this.handleDrag(evt.clientX, evt.clientY);
+      this.handleDrag(evt);
     }
   };
 
-  handleDrag = (x, y) => {
+  handleDrag = e => {
     if (this.dragContainer) {
       const bounds = this.dragContainer.getBoundingClientRect();
-      const _x = x - bounds.left;
-      const _y = y - bounds.top;
+      const { x, y } = getRelativePos(e, bounds);
       let hue = 0;
-      if (this.props.orientation === 'v') {
+      if (this.isVertical(bounds.width, bounds.height)) {
         hue = (y / bounds.height) * 360 + this.hueOffset;
-        this.setState({ y: _y, x: null });
+        this.setState({ y, x: null });
       } else {
         hue = (x / bounds.width) * 360 + this.hueOffset;
-        this.setState({ x: _x, y: null });
+        this.setState({ x, y: null });
       }
       this.props.onChange(hue);
       return true;
@@ -65,7 +74,7 @@ export default class Gradient extends React.PureComponent {
     };
   };
 
-  renderGradientOrientation = orientation => {
+  renderGradientOrientation = isVertical => {
     const stops = [
       <stop key='1' offset='0%' stopColor='#FF0000' stopOpacity='1' />,
       <stop key='2' offset='13%' stopColor='#FF00FF' stopOpacity='1' />,
@@ -77,15 +86,15 @@ export default class Gradient extends React.PureComponent {
       <stop key='8' offset='88%' stopColor='#FFFF00' stopOpacity='1' />,
       <stop key='9' offset='100%' stopColor='#FF0000' stopOpacity='1' />,
     ];
-    if (orientation === 'h') {
+    if (isVertical) {
       return (
-        <linearGradient id='gradient-hsv-0' x1='100%' y1='0%' x2='0%' y2='0%'>
+        <linearGradient id='gradient-hsv-0' x1='0%' y1='100%' x2='0%' y2='0%'>
           {stops}
         </linearGradient>
       );
     }
     return (
-      <linearGradient id='gradient-hsv-0' x1='0%' y1='100%' x2='0%' y2='0%'>
+      <linearGradient id='gradient-hsv-0' x1='100%' y1='0%' x2='0%' y2='0%'>
         {stops}
       </linearGradient>
     );
@@ -94,31 +103,48 @@ export default class Gradient extends React.PureComponent {
    * Credits to https://github.com/DavidDurman/FlexiColorPicker
    * Modifications done by this repository contributors
    */
-  renderSVGGradient = () => (
-    <svg
-      xmlns='http://www.w3.org/2000/svg'
-      version='1.1'
-      width='100%'
-      height='100%'
-      viewBox={this.props.orientation === 'h' ? '0 0 200 10' : '0 0 10 200'}
-      className='hue-svg'
-    >
-      <defs>{this.renderGradientOrientation(this.props.orientation)}</defs>
-      <rect x='0' y='0' width='100%' height='100%' fill='url(#gradient-hsv-0)' />
-    </svg>
-  );
+  renderSVGGradient = () => {
+    if (this.dragContainer) {
+      const bounds = this.dragContainer.getBoundingClientRect();
+      const isVertical = this.isVertical(bounds.width, bounds.height);
+      return (
+        <svg
+          xmlns='http://www.w3.org/2000/svg'
+          version='1.1'
+          width='100%'
+          height='100%'
+          viewBox={isVertical ? '0 0 10 200' : '0 0 200 10'}
+          className='hue-svg'
+        >
+          <defs>{this.renderGradientOrientation(isVertical)}</defs>
+          <rect x='0' y='0' width='100%' height='100%' fill='url(#gradient-hsv-0)' />
+        </svg>
+      );
+    }
+    return null;
+  };
+
+  componentDidMount() {
+    if (!this.state.isComponentRendered) {
+      // Rerender the component just once more, so that svg gradient gets
+      // rendered respective to given orientation...
+      this.setState({
+        isComponentRendered: true,
+      });
+    }
+  }
 
   render() {
-    const { orientation } = this.props;
     return (
-      <div className='hue-slider-container'>
+      <div
+        className='hue-slider-container'
+        style={{ position: 'relative', display: 'inline-block' }}
+      >
         <div
           ref={ele => {
             this.dragContainer = ele;
           }}
           onMouseDown={this.handleMouseDown}
-          onMouseUp={this.handleMouseUp}
-          onMouseMove={this.handleMouseMove}
           className='hue-container'
         >
           {this.renderSVGGradient()}
@@ -128,9 +154,10 @@ export default class Gradient extends React.PureComponent {
             this.dragEle = ele;
           }}
           className='hue-selector'
+          onMouseDown={this.handleMouseDown}
           style={{
+            position: 'absolute',
             ...this.getPosition(),
-            pointerEvents: 'none',
           }}
         />
       </div>

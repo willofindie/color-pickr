@@ -3,22 +3,23 @@ import PropTypes from 'prop-types';
 
 import GradientSelector from './components/gradient-selector';
 import HueSelector from './components/hue-selector';
-import { hsv2hex, hsv2rgb } from './utils';
+import { hsv2hex } from './utils';
 
 export default class Pickr extends React.PureComponent {
   static propTypes = {
     withSwatch: PropTypes.bool,
-    hueOrientation: PropTypes.oneOf(['h', 'v']).isRequired,
   };
 
-  static defaultProps = {
-    hueOrientation: 'h',
-  };
+  static defaultProps = {};
 
   state = {
     hue: 0,
-    hexValue: '',
-    hsv: {},
+    hexValue: '#ff0000',
+    hsv: {
+      h: 0,
+      s: 1,
+      v: 1,
+    },
   };
 
   handleShadowChange = (hex, rgb, hsv) => {
@@ -48,13 +49,13 @@ export default class Pickr extends React.PureComponent {
   };
 
   render() {
-    const { withSwatch, hueOrientation } = this.props;
+    const { withSwatch } = this.props;
     return (
       <div className={`${this.props.className} kamamana-color-pickr`}>
         <GradientSelector hue={this.state.hue} onChange={this.handleShadowChange} />
         <div className='slider-container'>
           {withSwatch && <div className='swatch' style={{ background: this.state.hexValue }} />}
-          <HueSelector onChange={this.handleHueChange} orientation={hueOrientation} />
+          <HueSelector onChange={this.handleHueChange} />
         </div>
         <div className='selection-container'>
           <div className='hex-container'>

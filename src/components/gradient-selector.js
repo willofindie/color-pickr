@@ -1,5 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import toggleDocumentListeners from '../toggle-document-listeners';
+import getRelativePos from '../get-relative-pos';
 import { hsv2hex, hsv2rgb } from '../utils';
 
 export default class Gradient extends React.PureComponent {
@@ -13,35 +15,36 @@ export default class Gradient extends React.PureComponent {
   };
 
   state = {
+    isComponentRendered: false,
     isMouseDown: false,
-    x: 0,
-    y: 0,
+    x: null,
+    y: null,
   };
 
-  handleMouseDown = () => this.setState({ isMouseDown: true });
-  handleMouseUp = () => this.setState({ isMouseDown: false });
+  handleMouseDown = () => {
+    this.setState({ isMouseDown: true });
+    toggleDocumentListeners(true, this.handleMouseUp, this.handleMouseMove);
+  };
+  handleMouseUp = () => {
+    this.setState({ isMouseDown: false });
+    toggleDocumentListeners(false, this.handleMouseUp, this.handleMouseMove);
+  };
   handleMouseMove = evt => {
     if (this.state.isMouseDown) {
-      this.handleDrag(evt.clientX, evt.clientY);
+      this.handleDrag(evt);
     }
   };
 
-  handleDrag = (x, y) => {
-    if (this.dragContainer) {
-      const bounds = this.dragContainer.getBoundingClientRect();
-      const _x = x - bounds.left;
-      const _y = y - bounds.top;
-      const hsv = {
-        h: this.props.hue,
-        s: _x / bounds.width,
-        v: (bounds.height - _y) / bounds.height,
-      };
-      this.props.onChange(hsv2hex(hsv), hsv2rgb(hsv), hsv);
-      this.setState({ x: _x, y: _y });
-      return true;
-    }
-
-    return false;
+  handleDrag = e => {
+    const bounds = this.dragContainer.getBoundingClientRect();
+    const { x, y } = getRelativePos(e, bounds);
+    const hsv = {
+      h: this.props.hue,
+      s: x / bounds.width,
+      v: (bounds.height - y) / bounds.height,
+    };
+    this.props.onChange(hsv2hex(hsv), hsv2rgb(hsv), hsv);
+    this.setState({ x, y });
   };
 
   getPosition = () => {
@@ -51,10 +54,7 @@ export default class Gradient extends React.PureComponent {
         left: this.state.x - this.dragEle.offsetWidth / 2,
       };
     }
-    return {
-      top: this.state.y,
-      left: this.state.x,
-    };
+    return {};
   };
 
   /**
@@ -85,17 +85,28 @@ export default class Gradient extends React.PureComponent {
     </svg>
   );
 
+  componentDidMount() {
+    if (!this.state.isComponentRendered) {
+      // Render it once more to get a proper setup...
+      if (this.dragContainer) {
+        const containerBounds = this.dragContainer.getBoundingClientRect();
+        this.setState({
+          x: containerBounds.width, // getPosition will handle the rest...
+          y: 0,
+        });
+      }
+    }
+  }
+
   render() {
     return (
-      <div className='gradient-container'>
+      <div className='gradient-container' style={{ position: 'relative', display: 'inline-block' }}>
         <div
           ref={ele => {
             this.dragContainer = ele;
           }}
           className='gradient'
           onMouseDown={this.handleMouseDown}
-          onMouseUp={this.handleMouseUp}
-          onMouseMove={this.handleMouseMove}
           style={{
             background: hsv2hex({ h: this.props.hue, s: 1, v: 1 }),
           }}
@@ -107,9 +118,10 @@ export default class Gradient extends React.PureComponent {
             this.dragEle = ele;
           }}
           className='gradient-selector'
+          onMouseDown={this.handleMouseDown}
           style={{
+            position: 'absolute',
             ...this.getPosition(),
-            pointerEvents: 'none',
           }}
         />
       </div>
